@@ -79,6 +79,9 @@ func unmarshal(rawData []byte) (packet Packet, bytesprocessed int, err error) {
 	case TypeGoodbye:
 		packet = new(Goodbye)
 
+	case TypeApplicationDefined:
+		packet = new(App)
+
 	case TypeTransportSpecificFeedback:
 		switch h.Count {
 		case FormatTLN:
