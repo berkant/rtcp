@@ -1,4 +1,4 @@
-module github.com/pion/rtcp
+module github.com/berkant/rtcp
 
 go 1.13
 
