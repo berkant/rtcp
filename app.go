@@ -7,25 +7,25 @@ import (
 
 const (
 	nameLength = 4
-
-	// FIXME: Just hard code SSRC for testing.
-	debugSSRC uint32 = 3572843026
 )
 
-type App []byte
+type App struct {
+	SSRC uint32
+	D    []byte
+}
 
 func (a *App) DestinationSSRC() []uint32 {
-	return []uint32{debugSSRC}
+	return []uint32{a.SSRC}
 }
 
 func (a *App) Marshal() ([]byte, error) {
 	rawPacket := make([]byte, a.len())
 	packetBody := rawPacket[headerLength:]
 
-	binary.BigEndian.PutUint32(packetBody, debugSSRC)
+	binary.BigEndian.PutUint32(packetBody, a.SSRC)
 
 	// Copy the data to packet body.
-	copy(packetBody[ssrcLength+nameLength:], *a)
+	copy(packetBody[ssrcLength+nameLength:], a.D)
 
 	rawHeader, err := a.Header().Marshal()
 	if err != nil {
@@ -43,13 +43,13 @@ func (a *App) Unmarshal(rawPacket []byte) error {
 	}
 
 	if h.Type != TypeApplicationDefined {
-		return errors.New("not an app packet")
+		return errors.New("not a valid app packet")
 	}
 
-	data := rawPacket[headerLength+ssrcLength+nameLength:]
-	data = data[:len(data)-int(h.Count)] // trim padding at the end
+	packetBody := rawPacket[headerLength:]
 
-	*a = data
+	a.SSRC = binary.BigEndian.Uint32(packetBody)
+	a.D = packetBody[ssrcLength+nameLength : len(packetBody)-int(h.Count)]
 
 	return nil
 }
@@ -58,7 +58,7 @@ func (a *App) Header() Header {
 	return Header{
 		// A hacky way of sending padding information to the other end.
 		// So that, the other end can trim the padding to get the original byte string.
-		Count: uint8(getPadding(len(*a))),
+		Count: uint8(getPadding(len(a.D))),
 
 		Type:   TypeApplicationDefined,
 		Length: uint16(a.len()/4 - 1),
@@ -66,7 +66,7 @@ func (a *App) Header() Header {
 }
 
 func (a *App) len() int {
-	l := headerLength + ssrcLength + nameLength + len(*a)
+	l := headerLength + ssrcLength + nameLength + len(a.D)
 	return l + getPadding(l)
 }
 
